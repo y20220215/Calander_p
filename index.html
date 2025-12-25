@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Calendar</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Courier New', monospace; background: transparent; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; image-rendering: pixelated; }
+        .calendar-container { background: #ffe6f7; border: 3px solid #ffb3e6; box-shadow: 0 0 0 1px #ffd9f2, 3px 3px 0 0 #ffb3e6, 6px 6px 0 0 #ffd9f2; padding: 12px; max-width: 220px; width: 100%; }
+        @media (min-width: 480px) { .calendar-container { padding: 16px; max-width: 280px; } }
+        @media (min-width: 768px) { .calendar-container { padding: 20px; max-width: 340px; } }
+        @media (min-width: 1024px) { .calendar-container { padding: 24px; max-width: 420px; } }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px dashed #ffb3e6; gap: 8px; }
+        .nav-buttons { display: flex; gap: 4px; align-items: center; }
+        .month-year { color: #ff66cc; font-size: 12px; font-weight: bold; letter-spacing: 1px; flex: 1; }
+        .nav-button { background: #fff0fa; border: 2px solid #ffb3e6; color: #ff66cc; width: 18px; height: 18px; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 8px; font-weight: bold; transition: all 0.1s; box-shadow: 2px 2px 0 0 #ffcce6, 1px 1px 0 #ffb3e6; }
+        .today-button { background: #fff0fa; border: 2px solid #ffb3e6; color: #ff66cc; padding: 2px 5px; cursor: pointer; font-size: 7px; font-weight: bold; transition: all 0.1s; box-shadow: 2px 2px 0 0 #ffcce6, 1px 1px 0 #ffb3e6; }
+        .nav-button:hover, .today-button:hover { background: #ffe6f7; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 0 #ffcce6, 2px 2px 0 #ffb3e6; }
+        .nav-button:active, .today-button:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 0 #ffcce6; }
+        .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 6px; }
+        .weekday { color: #ff66cc; font-size: 8px; font-weight: bold; text-align: center; padding: 4px 2px; background: #fff0fa; border: 2px solid #ffcce6; }
+        .weekday-sat, .weekday-sun { background: #ffe6f7; }
+        .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+        .day { aspect-ratio: 1; display: flex; justify-content: center; align-items: center; background: #ffffff; border: 2px solid #ffcce6; color: #ff3399; font-size: 10px; font-weight: bold; cursor: pointer; transition: all 0.1s; position: relative; box-shadow: inset -1px -1px 0 rgba(255, 204, 230, 0.5), 1px 1px 0 #ffe6f7; }
+        .day:hover { background: #fff0fa; border-color: #ffb3e6; transform: translate(-1px, -1px); box-shadow: inset -1px -1px 0 rgba(255, 204, 230, 0.5), 2px 2px 0 #ffb3e6; }
+        .day:active { transform: translate(1px, 1px); box-shadow: inset 1px 1px 0 rgba(255, 204, 230, 0.3); }
+        .day.today { background: linear-gradient(135deg, #ffb3e6 0%, #ff99dd 100%); color: #ffffff; border: 3px solid #ff66cc; box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.4), 2px 2px 0 #ffcce6; }
+        .day.other-month { opacity: 0.3; cursor: default; background: #fafafa; }
+        .day.saturday, .day.sunday { background: #fffafd; color: #ff66cc; }
+        .day.saturday:hover, .day.sunday:hover { background: #fff0fa; }
+        .day.has-event::after { content: '●'; position: absolute; bottom: 2px; font-size: 6px; color: #ff66cc; }
+        .day.selected { background: #ffe6f7; color: #ff66cc; border-color: #ff66cc; box-shadow: 0 0 6px rgba(255, 102, 204, 0.4); }
+        .event-tooltip { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #ffb3e6; color: #ffffff; padding: 4px 8px; font-size: 8px; z-index: 1000; margin-bottom: 6px; border: 2px solid #ff66cc; box-shadow: 2px 2px 0 rgba(255, 102, 204, 0.3); pointer-events: none; opacity: 0; transition: opacity 0.2s; min-width: 50px; max-width: 140px; width: max-content; max-height: 100px; overflow-y: auto; }
+        .event-tooltip.tooltip-bottom { bottom: auto; top: 100%; margin-bottom: 0; margin-top: 6px; }
+        .day:hover .event-tooltip { opacity: 1; }
+        .event-tooltip::after { content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 4px solid #ff66cc; }
+        .event-tooltip.tooltip-bottom::after { top: auto; bottom: 100%; border-top: none; border-bottom: 4px solid #ff66cc; }
+        .event-tooltip-item { margin: 3px 0; padding: 3px 0; border-bottom: 1px dotted rgba(255, 255, 255, 0.5); word-wrap: break-word; display: flex; align-items: center; }
+        .event-tooltip-item:last-child { border-bottom: none; }
+        .event-tooltip-priority { width: 5px; height: 5px; margin-right: 4px; border: 1px solid rgba(255, 255, 255, 0.3); flex-shrink: 0; }
+        .event-tooltip-priority.priority-high { background: #a29bfe; }
+        .event-tooltip-priority.priority-medium { background: #74b9ff; }
+        .event-tooltip-priority.priority-low { background: #55efc4; }
+        .event-tooltip-text { flex: 1; }
+        .event-tooltip-more { text-align: center; font-size: 9px; color: rgba(255, 255, 255, 0.8); margin-top: 3px; font-weight: bold; }
+        .event-input { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #ffe6f7; border: 3px solid #ffb3e6; box-shadow: 0 0 0 1px #ffd9f2, 3px 3px 0 0 #ffb3e6, 6px 6px 0 0 #ffd9f2, 0 0 30px rgba(255, 102, 204, 0.2); padding: 16px; width: 85%; max-width: 280px; z-index: 2000; display: none; }
+        .event-input.active { display: block; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 179, 230, 0.15); backdrop-filter: blur(3px); z-index: 1999; display: none; }
+        .modal-overlay.active { display: block; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 2px dashed #ffb3e6; }
+        .modal-title { color: #ff66cc; font-size: 12px; font-weight: bold; }
+        .close-button { background: #fff0fa; border: 2px solid #ffb3e6; color: #ff66cc; padding: 2px 4px; cursor: pointer; font-size: 12px; font-weight: bold; transition: all 0.1s; box-shadow: 2px 2px 0 0 #ffcce6, 1px 1px 0 #ffb3e6; }
+        .close-button:hover { background: #ffe6f7; }
+        .close-button:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 0 #ffcce6; }
+        .input-group { margin-bottom: 10px; }
+        .input-row { display: flex; gap: 6px; margin-bottom: 8px; }
+        .input-time { width: 70px; padding: 6px; background: #ffffff; border: 2px solid #ffcce6; color: #ff66cc; font-family: 'Courier New', monospace; font-size: 10px; box-shadow: inset 1px 1px 2px rgba(255, 102, 204, 0.1); }
+        .input-time:focus { outline: none; border-color: #ffb3e6; background: #fffafd; }
+        .priority-selector { display: flex; gap: 4px; margin-bottom: 8px; }
+        .priority-btn { flex: 1; padding: 5px; background: #fff0fa; border: 2px solid #ffcce6; font-family: 'Courier New', monospace; font-size: 9px; font-weight: bold; cursor: pointer; transition: all 0.1s; }
+        .priority-btn:hover { background: #ffe6f7; }
+        .priority-btn.active { box-shadow: inset 1px 1px 2px rgba(255, 102, 204, 0.2); }
+        .priority-btn.priority-high { color: #a29bfe; }
+        .priority-btn.priority-high.active { background: #f0eeff; border-color: #a29bfe; }
+        .priority-btn.priority-medium { color: #74b9ff; }
+        .priority-btn.priority-medium.active { background: #e8f4ff; border-color: #74b9ff; }
+        .priority-btn.priority-low { color: #55efc4; }
+        .priority-btn.priority-low.active { background: #e8fff9; border-color: #55efc4; }
+        .input-label { color: #ff66cc; font-size: 10px; font-weight: bold; display: block; margin-bottom: 5px; }
+        .event-text { width: 100%; padding: 7px; background: #ffffff; border: 2px solid #ffcce6; color: #ff66cc; font-family: 'Courier New', monospace; font-size: 11px; resize: none; box-shadow: inset 1px 1px 2px rgba(255, 102, 204, 0.1); }
+        .event-text::placeholder { color: #ffcce6; }
+        .event-text:focus { outline: none; border-color: #ffb3e6; background: #fffafd; }
+        .button-group { display: flex; gap: 8px; }
+        .btn { flex: 1; padding: 8px; background: #fff0fa; border: 2px solid #ffb3e6; color: #ff66cc; font-family: 'Courier New', monospace; font-size: 10px; font-weight: bold; cursor: pointer; transition: all 0.1s; box-shadow: 2px 2px 0 0 #ffcce6, 1px 1px 0 #ffb3e6; }
+        .btn:hover { background: #ffe6f7; transform: translate(-1px, -1px); box-shadow: 3px 3px 0 0 #ffcce6, 2px 2px 0 #ffb3e6; }
+        .btn:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 0 #ffcce6; }
+        .btn-save { background: #ffb3e6; color: #ffffff; }
+        .btn-save:hover { background: #ff99dd; }
+        .events-list { margin-top: 12px; max-height: 120px; overflow-y: auto; }
+        .event-limit-notice { text-align: center; font-size: 9px; color: #ffb3e6; margin-top: 8px; padding: 4px; background: #fff0fa; border: 1px solid #ffcce6; }
+        .event-item { background: #ffffff; border: 2px solid #ffcce6; padding: 6px; margin-bottom: 5px; color: #ff66cc; font-size: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 1px 1px 0 #ffe6f7; }
+        .event-content { flex: 1; }
+        .event-priority { display: inline-block; width: 6px; height: 6px; margin-right: 4px; border: 1px solid rgba(0, 0, 0, 0.1); vertical-align: middle; }
+        .event-priority.priority-high { background: #a29bfe; }
+        .event-priority.priority-medium { background: #74b9ff; }
+        .event-priority.priority-low { background: #55efc4; }
+        .event-time { font-size: 9px; color: #ffb3e6; font-weight: bold; }
+        .event-text-display { font-size: 10px; color: #ff66cc; }
+        .delete-event { background: #ffb3e6; border: 2px solid #ff99dd; color: #ffffff; padding: 2px 5px; cursor: pointer; font-size: 8px; font-weight: bold; transition: all 0.1s; box-shadow: 1px 1px 0 rgba(255, 102, 204, 0.3); }
+        .delete-event:hover { background: #ff99dd; transform: scale(1.05); }
+        .delete-event:active { transform: scale(0.95); }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #fff0fa; border: 1px solid #ffcce6; }
+        ::-webkit-scrollbar-thumb { background: #ffb3e6; border: 1px solid #ff99dd; }
+        ::-webkit-scrollbar-thumb:hover { background: #ff99dd; }
+    </style>
+</head>
+<body>
+    <div class="calendar-container">
+        <div class="calendar-header">
+            <div class="month-year" id="monthYear"></div>
+            <div class="nav-buttons">
+                <button class="nav-button" id="prevMonth">◀</button>
+                <button class="today-button" id="todayButton">TODAY</button>
+                <button class="nav-button" id="nextMonth">▶</button>
+            </div>
+        </div>
+        <div class="weekdays">
+            <div class="weekday">MON</div>
+            <div class="weekday">TUE</div>
+            <div class="weekday">WED</div>
+            <div class="weekday">THU</div>
+            <div class="weekday">FRI</div>
+            <div class="weekday weekday-sat">SAT</div>
+            <div class="weekday weekday-sun">SUN</div>
+        </div>
+        <div class="days" id="calendar"></div>
+    </div>
+    <div class="modal-overlay" id="modalOverlay"></div>
+    <div class="event-input" id="eventInput">
+        <div class="modal-header">
+            <div class="modal-title">EVENT FOR <span id="selectedDate"></span></div>
+            <button class="close-button" id="closeModal">✕</button>
+        </div>
+        <div class="input-group">
+            <label class="input-label">ADD NEW EVENT</label>
+            <div class="input-row">
+                <input type="time" class="input-time" id="eventTime" />
+            </div>
+            <div class="priority-selector">
+                <button class="priority-btn priority-high" data-priority="high">HIGH</button>
+                <button class="priority-btn priority-medium active" data-priority="medium">MID</button>
+                <button class="priority-btn priority-low" data-priority="low">LOW</button>
+            </div>
+            <textarea class="event-text" id="eventText" rows="2" placeholder="Enter your event..."></textarea>
+        </div>
+        <div class="button-group">
+            <button class="btn btn-save" id="saveEvent">SAVE</button>
+            <button class="btn" id="cancelEvent">CANCEL</button>
+        </div>
+        <div class="event-limit-notice" id="eventLimitNotice" style="display: none;">Maximum 10 events per day</div>
+        <div class="events-list" id="eventsList"></div>
+    </div>
+    <script>
+(function(){let e=new Date(),t=null,n={},o="medium";const r=()=>{try{const e=localStorage.getItem("pixelCalendarEvents");e&&(n=JSON.parse(e))}catch(e){n={}}},i=()=>{try{localStorage.setItem("pixelCalendarEvents",JSON.stringify(n))}catch(e){}},a=()=>{const t=e.getFullYear(),o=e.getMonth(),r=document.getElementById("monthYear");r&&(r.textContent=`${e.toLocaleString("en",{month:"long"}).toUpperCase()} ${t}`);const i=new Date(t,o,1).getDay(),a=0===i?6:i-1,l=new Date(t,o+1,0).getDate(),d=new Date(t,o,0).getDate(),c=document.getElementById("calendar");if(!c)return;c.innerHTML="";const u=new Date,m=u.getFullYear()===t&&u.getMonth()===o;for(let e=a-1;e>=0;e--){const n=d-e;c.appendChild(s(n,t,o-1,!0))}for(let e=1;e<=l;e++){const n=s(e,t,o,!1);m&&e===u.getDate()&&n.classList.add("today"),c.appendChild(n)}const p=c.children.length,g=7-p%7;if(g<7)for(let e=1;e<=g;e++)c.appendChild(s(e,t,o+1,!0))},s=(e,t,o,r)=>{const i=document.createElement("div");i.className="day",r&&i.classList.add("other-month"),i.textContent=e;const a=new Date(t,o,e).getDay();6===a&&i.classList.add("saturday"),0===a&&i.classList.add("sunday");const s=`${t}-${o}-${e}`;if(!r&&n[s]&&n[s].length>0){i.classList.add("has-event");const e=document.createElement("div");e.className="event-tooltip";const t=n[s].slice(0,3),o=n[s].length-3;if(t.forEach(t=>{const n=document.createElement("div");n.className="event-tooltip-item",t.priority&&n.appendChild(Object.assign(document.createElement("span"),{className:`event-tooltip-priority priority-${t.priority}`}));const o=document.createElement("span");o.className="event-tooltip-text",o.textContent=(t.time?t.time+" ":"")+(t.text||t),n.appendChild(o),e.appendChild(n)}),o>0){const t=document.createElement("div");t.className="event-tooltip-more",t.textContent=`+${o} more`,e.appendChild(t)}i.appendChild(e),i.addEventListener("mouseenter",function(){this.getBoundingClientRect().top<150&&e.classList.add("tooltip-bottom")})}return r||i.addEventListener("click",()=>l(t,o,e,i)),i},l=(e,o,r,i)=>{document.querySelectorAll(".day.selected").forEach(e=>e.classList.remove("selected")),i&&i.classList.add("selected"),t=`${e}-${o}-${r}`;const a=document.getElementById("selectedDate");a&&(a.textContent=`${o+1}/${r}/${e}`);const s=document.getElementById("eventInput"),l=document.getElementById("modalOverlay"),d=document.getElementById("eventText"),c=document.getElementById("eventTime");s&&s.classList.add("active"),l&&l.classList.add("active"),d&&(d.value=""),c&&(c.value=""),((e,o)=>{const r=document.getElementById("eventsList");if(!r)return;if(r.innerHTML="",!n[e]||0===n[e].length)return;[...n[e]].sort((e,t)=>{const n=e.time||"99:99",o=t.time||"99:99";return n.localeCompare(o)}).forEach(t=>{const o=n[e].indexOf(t);if(-1===o)return;const r=document.createElement("div");r.className="event-item";const i=document.createElement("div");i.className="event-content",i.style.display="flex",i.style.alignItems="center",t.priority&&i.appendChild(Object.assign(document.createElement("span"),{className:`event-priority priority-${t.priority}`}));const a=document.createElement("span");if(t.time){const e=document.createElement("span");e.className="event-time",e.textContent=t.time+" ",a.appendChild(e)}const s=document.createElement("span");s.className="event-text-display",s.textContent=t.text||t,a.appendChild(s),i.appendChild(a);const l=document.createElement("button");l.className="delete-event",l.textContent="DEL",l.onclick=()=>(e=>{n[e]&&n[e].splice(o,1),0===n[e].length&&delete n[e],i(),a()})(e),r.appendChild(i),r.appendChild(l),document.getElementById("eventsList").appendChild(r)})})(t)},d=()=>{const e=document.getElementById("eventInput"),t=document.getElementById("modalOverlay");e&&e.classList.remove("active"),t&&t.classList.remove("active"),document.querySelectorAll(".day.selected").forEach(e=>e.classList.remove("selected")),t=null},c=document.getElementById("prevMonth");c&&(c.onclick=()=>{e.setMonth(e.getMonth()-1),a()});const u=document.getElementById("nextMonth");u&&(u.onclick=()=>{e.setMonth(e.getMonth()+1),a()});const m=document.getElementById("todayButton");m&&(m.onclick=()=>{e=new Date,a()});const p=document.getElementById("saveEvent");p&&(p.onclick=()=>{const e=document.getElementById("eventText"),r=document.getElementById("eventTime");if(!e)return;const a=e.value.trim(),s=r?r.value:"";if(!a)return;if(t){n[t]||(n[t]=[]);if(n[t].length>=10){const e=document.getElementById("eventLimitNotice");return void(e&&(e.style.display="block",setTimeout(()=>{e.style.display="none"},3e3)))}n[t].push({text:a,time:s,priority:o}),i(),e.value="",r&&(r.value=""),l(t.split("-")[0],t.split("-")[1],t.split("-")[2],null),a()}});const g=document.getElementById("eventText");g&&g.addEventListener("keydown",e=>{"Enter"===e.key&&!e.shiftKey&&(e.preventDefault(),document.getElementById("saveEvent")?.click())});const f=document.getElementById("cancelEvent");f&&(f.onclick=d);const v=document.getElementById("closeModal");v&&(v.onclick=d);const y=document.getElementById("modalOverlay");y&&(y.onclick=d),document.querySelectorAll(".priority-btn").forEach(e=>{e.onclick=function(){document.querySelectorAll(".priority-btn").forEach(e=>e.classList.remove("active")),this.classList.add("active");const e=this.getAttribute("data-priority");e&&(o=e)}}),r(),a()})();
+    </script>
+</body>
+</html>
